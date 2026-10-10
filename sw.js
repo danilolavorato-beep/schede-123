@@ -1,4 +1,4 @@
-const C = 'schede-v4';
+const C = 'schede-v5';
 const FILES = ['./', 'index.html', 'manifest.webmanifest', 'archivo.woff2', 'icon-192.png', 'icon-512.png'];
 
 self.addEventListener('install', e => {
