@@ -1,0 +1,67 @@
+name: Crea APK
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 21
+
+      - name: Prepara i file dell'app
+        run: |
+          mkdir www
+          cp index.html sw.js manifest.webmanifest icon-192.png icon-512.png archivo.woff2 www/
+          cat > capacitor.config.json <<'JSON'
+          {
+            "appId": "it.schede.palestra",
+            "appName": "Schede",
+            "webDir": "www",
+            "backgroundColor": "#EDEFEE"
+          }
+          JSON
+          npm init -y
+          npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8
+
+      - name: Crea il progetto Android
+        run: |
+          npx cap add android
+          npx cap sync android
+
+      - name: Icona dell'app
+        continue-on-error: true
+        run: |
+          cd android/app/src/main/res
+          rm -rf mipmap-anydpi-v26
+          for pair in mdpi:48 hdpi:72 xhdpi:96 xxhdpi:144 xxxhdpi:192; do
+            d=${pair%%:*}; s=${pair##*:}
+            convert "$GITHUB_WORKSPACE/icon-512.png" -resize ${s}x${s} mipmap-$d/ic_launcher.png
+            cp mipmap-$d/ic_launcher.png mipmap-$d/ic_launcher_round.png
+            rm -f mipmap-$d/ic_launcher_foreground.png
+          done
+
+      - name: Firma fissa (per poter aggiornare l'app senza disinstallarla)
+        run: |
+          mkdir -p ~/.android
+          cp debug.keystore ~/.android/debug.keystore
+
+      - name: Compila l'APK
+        run: |
+          cd android
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: Schede-apk
+          path: android/app/build/outputs/apk/debug/app-debug.apk
